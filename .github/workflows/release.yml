@@ -111,22 +111,27 @@ jobs:
                   releaseId: ${{ needs.create-release.outputs.release_id }}
                   args: ${{ matrix.args }}
 
-            - name: Rename portable and upload binary (Windows)
+            - name: Create and upload portable (Windows)
               if: matrix.platform == 'windows-latest'
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
               run: |
-                  # Rename portable file
-                  $portableFile = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis/*setup.nsis.zip" | Select-Object -First 1
-                  if ($portableFile) {
-                    $newName = $portableFile.Name -replace 'setup\.nsis\.zip$', 'portable.zip'
-                    $newPath = Join-Path $portableFile.DirectoryName $newName
-                    Rename-Item -Path $portableFile.FullName -NewName $newName
-                    
-                    # Upload renamed file
-                    $releaseId = "${{ needs.create-release.outputs.release_id }}"
-                    gh release upload "v$(node -p 'require(\"./package.json\").version')" "$newPath" --clobber
-                  }
+                  # Get version
+                  $VERSION = node -p "require('./package.json').version"
+
+                  # Create portable directory
+                  $portableDir = "Hermanar-portable"
+                  New-Item -ItemType Directory -Force -Path $portableDir
+
+                  # Copy executable
+                  Copy-Item "src-tauri/target/release/hermanar.exe" "$portableDir/"
+
+                  # Create portable zip
+                  $zipName = "Hermanar_${VERSION}_x64-portable.zip"
+                  Compress-Archive -Path $portableDir -DestinationPath $zipName
+
+                  # Upload to release
+                  gh release upload "v$VERSION" $zipName --clobber
               shell: pwsh
 
             - name: Upload Linux binary (Ubuntu)
