@@ -1,6 +1,6 @@
 {
   "build": {
-    "beforeDevCommand": "pnpm dev",
+    "beforeDevCommand": "pnpm dev-web",
     "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420"
@@ -16,9 +16,9 @@
       "icons/icon.ico"
     ]
   },
-  "productName": "create-tauri-react",
+  "productName": "Hermanar",
   "version": "0.1.0",
-  "identifier": "com.tauri.app",
+  "identifier": "com.hermanar.app",
   "plugins": {
     "process": {
       "active": true
@@ -30,9 +30,9 @@
     },
     "windows": [
       {
-        "title": "Tauri App",
-        "width": 1000,
-        "height": 600,
+        "title": "Hermanar - Sistema de Gestión de Hermandades",
+        "width": 1280,
+        "height": 800,
         "dragDropEnabled": false
       }
     ]

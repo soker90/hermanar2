@@ -1,10 +1,11 @@
 {
-    "name": "create-tauri-react",
-    "version": "1.0.0",
-    "description": "",
+    "name": "hermanar",
+    "version": "0.1.0",
+    "description": "Sistema de Gestión de Hermandades",
     "type": "module",
     "scripts": {
-        "dev": "vite",
+        "dev": "tauri dev",
+        "dev-web": "vite",
         "build": "tsc && vite build",
         "preview": "vite preview",
         "tauri": "tauri",
