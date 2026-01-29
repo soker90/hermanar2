@@ -33,7 +33,8 @@
         "title": "Hermanar - Sistema de Gestión de Hermandades",
         "width": 1280,
         "height": 800,
-        "dragDropEnabled": false
+        "dragDropEnabled": false,
+        "maximized": true
       }
     ]
   }
