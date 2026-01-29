@@ -111,6 +111,39 @@ jobs:
                   releaseId: ${{ needs.create-release.outputs.release_id }}
                   args: ${{ matrix.args }}
 
+            - name: Rename portable and upload binary (Windows)
+              if: matrix.platform == 'windows-latest'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  # Rename portable file
+                  $portableFile = Get-ChildItem -Path "src-tauri/target/release/bundle/nsis/*setup.nsis.zip" | Select-Object -First 1
+                  if ($portableFile) {
+                    $newName = $portableFile.Name -replace 'setup\.nsis\.zip$', 'portable.zip'
+                    $newPath = Join-Path $portableFile.DirectoryName $newName
+                    Rename-Item -Path $portableFile.FullName -NewName $newName
+                    
+                    # Upload renamed file
+                    $releaseId = "${{ needs.create-release.outputs.release_id }}"
+                    gh release upload "v$(node -p 'require(\"./package.json\").version')" "$newPath" --clobber
+                  }
+              shell: pwsh
+
+            - name: Upload Linux binary (Ubuntu)
+              if: matrix.platform == 'ubuntu-22.04'
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  # Get version
+                  VERSION=$(node -p "require('./package.json').version")
+
+                  # Compress binary
+                  cd src-tauri/target/release
+                  tar -czf hermanar_${VERSION}_linux_x64.tar.gz hermanar
+
+                  # Upload to release
+                  gh release upload "v${VERSION}" hermanar_${VERSION}_linux_x64.tar.gz --clobber
+
     publish-release:
         permissions:
             contents: write
