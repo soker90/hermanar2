@@ -6,21 +6,21 @@ import {
     Mail,
     MapPin,
     Calendar,
-    FileText,
     Users,
     ArrowLeft,
-    Edit
+    Edit,
+    Church,
+    Shield
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useParams, useNavigate } from 'react-router'
-import type { Hermano, Familia } from '@/types'
+import type { Hermano } from '@/types'
 
 export function Component() {
     const { id } = useParams()
     const navigate = useNavigate()
     const [hermano, setHermano] = useState<Hermano | null>(null)
-    const [familia, setFamilia] = useState<Familia | null>(null)
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
@@ -35,14 +35,6 @@ export function Component() {
                 id: parseInt(id)
             })
             setHermano(hermanoData)
-
-            // Cargar familia si el hermano tiene familia_id
-            if (hermanoData.familia_id) {
-                const familiaData = await invoke<Familia>('get_familia_cmd', {
-                    id: hermanoData.familia_id
-                })
-                setFamilia(familiaData)
-            }
         } catch (error) {
             console.error('Error al cargar hermano:', error)
         } finally {
@@ -93,7 +85,8 @@ export function Component() {
                         <User className="h-6 w-6 text-indigo-600 mr-3" />
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900">
-                                {hermano.nombre} {hermano.apellidos}
+                                {hermano.nombre} {hermano.primer_apellido}{' '}
+                                {hermano.segundo_apellido}
                             </h1>
                             <p className="text-sm text-gray-600">
                                 Número de hermano: {hermano.numero_hermano}
@@ -134,7 +127,8 @@ export function Component() {
                                 Nombre completo
                             </label>
                             <p className="mt-1 text-sm text-gray-900">
-                                {hermano.nombre} {hermano.apellidos}
+                                {hermano.nombre} {hermano.primer_apellido}{' '}
+                                {hermano.segundo_apellido}
                             </p>
                         </div>
 
@@ -152,6 +146,26 @@ export function Component() {
                         <div>
                             <label className="text-sm font-medium text-gray-700 flex items-center">
                                 <Calendar className="h-4 w-4 mr-1" />
+                                Fecha de alta
+                            </label>
+                            <p className="mt-1 text-sm text-gray-900">
+                                {formatDate(hermano.fecha_alta)}
+                            </p>
+                        </div>
+                    </div>
+                </Card>
+
+                {/* Datos de Nacimiento */}
+                <Card>
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <Calendar className="h-5 w-5 mr-2 text-indigo-600" />
+                            Datos de Nacimiento
+                        </h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        <div>
+                            <label className="text-sm font-medium text-gray-700">
                                 Fecha de nacimiento
                             </label>
                             <p className="mt-1 text-sm text-gray-900">
@@ -159,15 +173,79 @@ export function Component() {
                             </p>
                         </div>
 
-                        <div>
-                            <label className="text-sm font-medium text-gray-700 flex items-center">
-                                <Calendar className="h-4 w-4 mr-1" />
-                                Fecha de alta
-                            </label>
-                            <p className="mt-1 text-sm text-gray-900">
-                                {formatDate(hermano.fecha_alta)}
-                            </p>
-                        </div>
+                        {hermano.localidad_nacimiento && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Localidad de Nacimiento
+                                </label>
+                                <p className="mt-1 text-sm text-gray-900">
+                                    {hermano.localidad_nacimiento}
+                                </p>
+                            </div>
+                        )}
+
+                        {hermano.provincia_nacimiento && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Provincia de Nacimiento
+                                </label>
+                                <p className="mt-1 text-sm text-gray-900">
+                                    {hermano.provincia_nacimiento}
+                                </p>
+                            </div>
+                        )}
+                    </div>
+                </Card>
+
+                {/* Datos de Bautismo */}
+                <Card>
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <Church className="h-5 w-5 mr-2 text-indigo-600" />
+                            Datos de Bautismo
+                        </h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {hermano.parroquia_bautismo && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Parroquia
+                                </label>
+                                <p className="mt-1 text-sm text-gray-900">
+                                    {hermano.parroquia_bautismo}
+                                </p>
+                            </div>
+                        )}
+
+                        {hermano.localidad_bautismo && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Localidad
+                                </label>
+                                <p className="mt-1 text-sm text-gray-900">
+                                    {hermano.localidad_bautismo}
+                                </p>
+                            </div>
+                        )}
+
+                        {hermano.provincia_bautismo && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Provincia
+                                </label>
+                                <p className="mt-1 text-sm text-gray-900">
+                                    {hermano.provincia_bautismo}
+                                </p>
+                            </div>
+                        )}
+
+                        {!hermano.parroquia_bautismo &&
+                            !hermano.localidad_bautismo &&
+                            !hermano.provincia_bautismo && (
+                                <p className="text-sm text-gray-500">
+                                    No hay datos de bautismo registrados
+                                </p>
+                            )}
                     </div>
                 </Card>
 
@@ -199,65 +277,139 @@ export function Component() {
                                 {hermano.email || 'No especificado'}
                             </p>
                         </div>
-
-                        <div>
-                            <label className="text-sm font-medium text-gray-700 flex items-center">
-                                <MapPin className="h-4 w-4 mr-1" />
-                                Dirección
-                            </label>
-                            <p className="mt-1 text-sm text-gray-900">
-                                {hermano.direccion || 'No especificada'}
-                            </p>
-                        </div>
                     </div>
                 </Card>
 
-                {/* Información de Familia */}
-                {familia && (
+                {/* Dirección y Domicilio */}
+                <Card>
+                    <div className="px-6 py-4 border-b border-gray-200">
+                        <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                            <MapPin className="h-5 w-5 mr-2 text-indigo-600" />
+                            Dirección y Domicilio
+                        </h2>
+                    </div>
+                    <div className="p-6 space-y-4">
+                        {hermano.direccion && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Dirección
+                                </label>
+                                <p className="mt-1 text-sm text-gray-900">
+                                    {hermano.direccion}
+                                </p>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                            {hermano.localidad && (
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Localidad
+                                    </label>
+                                    <p className="mt-1 text-sm text-gray-900">
+                                        {hermano.localidad}
+                                    </p>
+                                </div>
+                            )}
+
+                            {hermano.provincia && (
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Provincia
+                                    </label>
+                                    <p className="mt-1 text-sm text-gray-900">
+                                        {hermano.provincia}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {hermano.codigo_postal && (
+                            <div>
+                                <label className="text-sm font-medium text-gray-700">
+                                    Código Postal
+                                </label>
+                                <p className="mt-1 text-sm text-gray-900">
+                                    {hermano.codigo_postal}
+                                </p>
+                            </div>
+                        )}
+
+                        {!hermano.direccion &&
+                            !hermano.localidad &&
+                            !hermano.provincia &&
+                            !hermano.codigo_postal && (
+                                <p className="text-sm text-gray-500">
+                                    No hay datos de domicilio registrados
+                                </p>
+                            )}
+                    </div>
+                </Card>
+
+                {/* Autorización Menores */}
+                {hermano.autorizacion_menores && (
+                    <Card>
+                        <div className="px-6 py-4 border-b border-gray-200">
+                            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                                <Shield className="h-5 w-5 mr-2 text-indigo-600" />
+                                Representante Legal (Menor de Edad)
+                            </h2>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            {hermano.nombre_representante_legal && (
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Nombre y Apellidos
+                                    </label>
+                                    <p className="mt-1 text-sm text-gray-900">
+                                        {hermano.nombre_representante_legal}
+                                    </p>
+                                </div>
+                            )}
+
+                            {hermano.dni_representante_legal && (
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">
+                                        DNI
+                                    </label>
+                                    <p className="mt-1 text-sm text-gray-900">
+                                        {hermano.dni_representante_legal}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    </Card>
+                )}
+
+                {/* Avales */}
+                {(hermano.hermano_aval_1 || hermano.hermano_aval_2) && (
                     <Card>
                         <div className="px-6 py-4 border-b border-gray-200">
                             <h2 className="text-lg font-semibold text-gray-900 flex items-center">
                                 <Users className="h-5 w-5 mr-2 text-indigo-600" />
-                                Información de Familia
+                                Hermanos Avales
                             </h2>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-700">
-                                    Familia
-                                </label>
-                                <p className="mt-1 text-sm text-gray-900">
-                                    {familia.nombre_familia}
-                                </p>
-                            </div>
-
-                            {familia.hermano_direccion_id ? (
-                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                                    <h4 className="text-sm font-semibold text-green-900 mb-2">
-                                        Dirección Principal de la Familia
-                                    </h4>
-                                    <p className="text-xs text-green-600 mb-2">
-                                        Proporcionada por el hermano con ID:{' '}
-                                        {familia.hermano_direccion_id}
-                                        {familia.hermano_direccion_id ===
-                                            hermano.id && ' (Este hermano)'}
+                            {hermano.hermano_aval_1 && (
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Hermano 1
+                                    </label>
+                                    <p className="mt-1 text-sm text-gray-900">
+                                        {hermano.hermano_aval_1}
                                     </p>
-                                    <div className="text-sm text-gray-600">
-                                        Para ver los detalles completos de
-                                        contacto, consulte la información del
-                                        hermano principal de la familia.
-                                    </div>
                                 </div>
-                            ) : (
-                                <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                                    <div className="flex items-center">
-                                        <MapPin className="h-4 w-4 mr-2 text-yellow-600" />
-                                        <span className="text-sm text-yellow-800">
-                                            No se ha seleccionado un hermano
-                                            para proporcionar la dirección
-                                            principal de la familia
-                                        </span>
-                                    </div>
+                            )}
+
+                            {hermano.hermano_aval_2 && (
+                                <div>
+                                    <label className="text-sm font-medium text-gray-700">
+                                        Hermano 2
+                                    </label>
+                                    <p className="mt-1 text-sm text-gray-900">
+                                        {hermano.hermano_aval_2}
+                                    </p>
                                 </div>
                             )}
                         </div>
@@ -266,10 +418,9 @@ export function Component() {
 
                 {/* Observaciones */}
                 {hermano.observaciones && (
-                    <Card className={familia ? '' : 'lg:col-span-2'}>
+                    <Card className="lg:col-span-2">
                         <div className="px-6 py-4 border-b border-gray-200">
-                            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
-                                <FileText className="h-5 w-5 mr-2 text-indigo-600" />
+                            <h2 className="text-lg font-semibold text-gray-900">
                                 Observaciones
                             </h2>
                         </div>
@@ -280,33 +431,6 @@ export function Component() {
                         </div>
                     </Card>
                 )}
-
-                {/* Información del Sistema */}
-                <Card className="lg:col-span-2">
-                    <div className="px-6 py-4 border-b border-gray-200">
-                        <h2 className="text-lg font-semibold text-gray-900">
-                            Información del Sistema
-                        </h2>
-                    </div>
-                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="text-sm font-medium text-gray-700">
-                                Fecha de creación
-                            </label>
-                            <p className="mt-1 text-sm text-gray-900">
-                                {formatDate(hermano.created_at)}
-                            </p>
-                        </div>
-                        <div>
-                            <label className="text-sm font-medium text-gray-700">
-                                Última actualización
-                            </label>
-                            <p className="mt-1 text-sm text-gray-900">
-                                {formatDate(hermano.updated_at)}
-                            </p>
-                        </div>
-                    </div>
-                </Card>
             </div>
         </div>
     )

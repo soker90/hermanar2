@@ -3,14 +3,28 @@ export interface Hermano extends Record<string, unknown> {
     id?: number
     numero_hermano: string
     nombre: string
-    apellidos: string
+    primer_apellido: string
+    segundo_apellido?: string
     dni?: string
     fecha_nacimiento?: string // ISO format YYYY-MM-DD
+    localidad_nacimiento?: string
+    provincia_nacimiento?: string
     fecha_alta: string // ISO format YYYY-MM-DD
     familia_id?: number
     telefono?: string
     email?: string
     direccion?: string
+    localidad?: string
+    provincia?: string
+    codigo_postal?: string
+    parroquia_bautismo?: string
+    localidad_bautismo?: string
+    provincia_bautismo?: string
+    autorizacion_menores: boolean
+    nombre_representante_legal?: string
+    dni_representante_legal?: string
+    hermano_aval_1?: string
+    hermano_aval_2?: string
     activo: boolean
     observaciones?: string
     created_at?: string
@@ -91,14 +105,28 @@ export interface EstadisticasCuotas {
 export interface HermanoFormData {
     numero_hermano: string
     nombre: string
-    apellidos: string
+    primer_apellido: string
+    segundo_apellido?: string
     dni?: string
     fecha_nacimiento?: string
+    localidad_nacimiento?: string
+    provincia_nacimiento?: string
     fecha_alta: string
     familia_id?: number
     telefono?: string
     email?: string
     direccion?: string
+    localidad?: string
+    provincia?: string
+    codigo_postal?: string
+    parroquia_bautismo?: string
+    localidad_bautismo?: string
+    provincia_bautismo?: string
+    autorizacion_menores: boolean
+    nombre_representante_legal?: string
+    dni_representante_legal?: string
+    hermano_aval_1?: string
+    hermano_aval_2?: string
     activo: boolean
     observaciones?: string
 }

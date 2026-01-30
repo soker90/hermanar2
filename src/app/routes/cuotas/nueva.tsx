@@ -5,6 +5,7 @@ import { Select } from '@/components/ui/select'
 import { useNavigate } from 'react-router'
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useToastContext } from '@/contexts/toast-context'
 
 interface Hermano {
     id: number
@@ -16,6 +17,7 @@ interface Hermano {
 
 export function Component() {
     const navigate = useNavigate()
+    const toast = useToastContext()
     const [loading, setLoading] = useState(false)
     const [hermanos, setHermanos] = useState<Hermano[]>([])
     const [formData, setFormData] = useState({
@@ -47,7 +49,7 @@ export function Component() {
         e.preventDefault()
 
         if (formData.hermano_id === 0) {
-            alert('Debes seleccionar un hermano')
+            toast.warning('Debes seleccionar un hermano')
             return
         }
 
@@ -63,11 +65,11 @@ export function Component() {
             }
 
             await invoke('create_cuota_cmd', { cuota: dataToSend })
-            alert('Cuota creada correctamente')
+            toast.success('Cuota creada correctamente')
             navigate('/cuotas')
         } catch (error) {
             console.error('Error creating cuota:', error)
-            alert('Error al crear la cuota')
+            toast.error('Error al crear la cuota')
         } finally {
             setLoading(false)
         }

@@ -7,9 +7,11 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { invoke } from '@tauri-apps/api/core'
 import type { Hermano } from '@/types'
+import { useToastContext } from '@/contexts/toast-context'
 
 export function Component() {
     const navigate = useNavigate()
+    const toast = useToastContext()
     const [hermanos, setHermanos] = useState<Hermano[]>([])
     const [loading, setLoading] = useState(true)
     const [searchTerm, setSearchTerm] = useState('')
@@ -45,7 +47,11 @@ export function Component() {
     }
 
     const handleDelete = async (hermano: Hermano) => {
-        if (!confirm(`¿Eliminar a ${hermano.nombre} ${hermano.apellidos}?`))
+        if (
+            !confirm(
+                `¿Eliminar a ${hermano.nombre} ${hermano.primer_apellido} ${hermano.segundo_apellido || ''}?`
+            )
+        )
             return
 
         try {
@@ -53,14 +59,19 @@ export function Component() {
             loadHermanos()
         } catch (error) {
             console.error('Error deleting hermano:', error)
-            alert('Error al eliminar el hermano')
+            toast.error('Error al eliminar el hermano')
         }
     }
 
     const columns: TableColumn<Hermano>[] = [
         { key: 'numero_hermano', label: 'Número' },
         { key: 'nombre', label: 'Nombre' },
-        { key: 'apellidos', label: 'Apellidos' },
+        {
+            key: 'primer_apellido',
+            label: 'Apellidos',
+            render: (_v, item) =>
+                `${item.primer_apellido} ${item.segundo_apellido || ''}`
+        },
         {
             key: 'telefono',
             label: 'Teléfono',

@@ -50,11 +50,11 @@ export function Component() {
             }
 
             await invoke('create_familia_cmd', { familia: dataToSend })
-            alert('Familia creada correctamente')
+            toast.success('Familia creada correctamente')
             navigate('/familias')
         } catch (error) {
             console.error('Error creating familia:', error)
-            alert('Error al crear la familia')
+            toast.error('Error al crear la familia')
         } finally {
             setLoading(false)
         }

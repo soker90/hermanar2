@@ -5,6 +5,7 @@ import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { invoke } from '@tauri-apps/api/core'
+import { useToastContext } from '@/contexts/toast-context'
 
 interface Familia extends Record<string, unknown> {
     id: number
@@ -16,6 +17,7 @@ interface Familia extends Record<string, unknown> {
 
 export function Component() {
     const navigate = useNavigate()
+    const toast = useToastContext()
     const [familias, setFamilias] = useState<Familia[]>([])
     const [loading, setLoading] = useState(true)
 
@@ -43,7 +45,7 @@ export function Component() {
             loadFamilias()
         } catch (error) {
             console.error('Error deleting familia:', error)
-            alert(
+            toast.error(
                 'Error al eliminar la familia. Asegúrate de que no tenga hermanos asignados.'
             )
         }

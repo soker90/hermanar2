@@ -6,6 +6,7 @@ import { Plus } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { invoke } from '@tauri-apps/api/core'
+import { useToastContext } from '@/contexts/toast-context'
 
 interface Cuota extends Record<string, unknown> {
     id: number
@@ -63,7 +64,7 @@ export function Component() {
             loadData()
         } catch (error) {
             console.error('Error deleting cuota:', error)
-            alert('Error al eliminar la cuota')
+            toast.error('Error al eliminar la cuota')
         }
     }
 
@@ -76,7 +77,7 @@ export function Component() {
             loadData()
         } catch (error) {
             console.error('Error updating cuota:', error)
-            alert('Error al actualizar el estado de la cuota')
+            toast.error('Error al actualizar el estado de la cuota')
         }
     }
 

@@ -5,6 +5,7 @@ import { Select } from '@/components/ui/select'
 import { useNavigate, useParams } from 'react-router'
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useToastContext } from '@/contexts/toast-context'
 
 interface Hermano {
     id: number
@@ -29,6 +30,7 @@ interface Cuota {
 export function Component() {
     const navigate = useNavigate()
     const { id } = useParams()
+    const toast = useToastContext()
     const [loading, setLoading] = useState(false)
     const [loadingData, setLoadingData] = useState(true)
     const [hermanos, setHermanos] = useState<Hermano[]>([])
@@ -70,7 +72,7 @@ export function Component() {
                 setHermanos(hermanosData)
             } catch (error) {
                 console.error('Error loading data:', error)
-                alert('Error al cargar los datos')
+                toast.error('Error al cargar los datos')
             } finally {
                 setLoadingData(false)
             }
@@ -96,11 +98,11 @@ export function Component() {
                 id: Number(id),
                 cuota: dataToSend
             })
-            alert('Cuota actualizada correctamente')
+            toast.success('Cuota actualizada correctamente')
             navigate('/cuotas')
         } catch (error) {
             console.error('Error updating cuota:', error)
-            alert('Error al actualizar la cuota')
+            toast.error('Error al actualizar la cuota')
         } finally {
             setLoading(false)
         }
