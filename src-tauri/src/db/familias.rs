@@ -98,12 +98,12 @@ pub fn update_familia(db: &DbConnection, id: i32, familia: &Familia) -> Result<(
 pub fn delete_familia(db: &DbConnection, id: i32) -> Result<(), anyhow::Error> {
     let conn = db.lock().map_err(|_| anyhow::anyhow!("Error de base de datos"))?;
 
-    // Verificar si la familia tiene hermanos
-    let mut stmt = conn.prepare("SELECT COUNT(*) FROM hermanos WHERE familia_id = ?1")?;
+    // Verificar si la familia tiene hermanos activos
+    let mut stmt = conn.prepare("SELECT COUNT(*) FROM hermanos WHERE familia_id = ?1 AND activo = 1")?;
     let count: i32 = stmt.query_row([id], |row| row.get(0))?;
 
     if count > 0 {
-        return Err(anyhow::anyhow!("No se puede eliminar la familia porque tiene hermanos asociados"));
+        return Err(anyhow::anyhow!("No se puede eliminar la familia porque tiene hermanos activos asociados"));
     }
 
     conn.execute("DELETE FROM familias WHERE id = ?1", [id])?;

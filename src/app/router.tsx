@@ -1,4 +1,4 @@
-import { createBrowserRouter, RouterProvider } from 'react-router'
+import { createBrowserRouter, RouterProvider, Navigate } from 'react-router'
 
 const createAppRouter = () =>
     createBrowserRouter([
@@ -40,7 +40,7 @@ const createAppRouter = () =>
                 },
                 {
                     path: 'cuotas',
-                    lazy: () => import('@/app/routes/cuotas/index')
+                    element: <Navigate to="/cuotas/gestion" replace />
                 },
                 {
                     path: 'cuotas/gestion',

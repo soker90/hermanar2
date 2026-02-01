@@ -17,6 +17,9 @@ export interface TableProps<T> {
     onView?: (item: T) => void
     loading?: boolean
     emptyMessage?: string
+    viewTitle?: string
+    editTitle?: string
+    deleteTitle?: string
 }
 
 export function Table<T extends Record<string, unknown>>({
@@ -26,7 +29,10 @@ export function Table<T extends Record<string, unknown>>({
     onDelete,
     onView,
     loading,
-    emptyMessage = 'No hay datos para mostrar'
+    emptyMessage = 'No hay datos para mostrar',
+    viewTitle = 'Ver detalle',
+    editTitle = 'Editar',
+    deleteTitle = 'Eliminar'
 }: TableProps<T>) {
     const hasActions = onEdit || onDelete || onView
 
@@ -92,7 +98,7 @@ export function Table<T extends Record<string, unknown>>({
                                             <button
                                                 onClick={() => onView(item)}
                                                 className="text-indigo-600 hover:text-indigo-900 p-1 rounded hover:bg-indigo-50"
-                                                title="Ver detalle"
+                                                title={viewTitle}
                                             >
                                                 <Eye className="h-4 w-4" />
                                             </button>
@@ -101,7 +107,7 @@ export function Table<T extends Record<string, unknown>>({
                                             <button
                                                 onClick={() => onEdit(item)}
                                                 className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50"
-                                                title="Editar"
+                                                title={editTitle}
                                             >
                                                 <Edit className="h-4 w-4" />
                                             </button>
@@ -110,7 +116,7 @@ export function Table<T extends Record<string, unknown>>({
                                             <button
                                                 onClick={() => onDelete(item)}
                                                 className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50"
-                                                title="Eliminar"
+                                                title={deleteTitle}
                                             >
                                                 <Trash2 className="h-4 w-4" />
                                             </button>

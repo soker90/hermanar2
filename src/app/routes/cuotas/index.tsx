@@ -1,8 +1,9 @@
 import { Card } from '@/components/ui/card'
-import { Table, type TableColumn } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
-import { Plus } from 'lucide-react'
+import { Table, type TableColumn } from '@/components/ui/table'
+import { Plus, Euro, User, Check, X, AlertCircle } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
 import { invoke } from '@tauri-apps/api/core'
@@ -23,12 +24,14 @@ interface Cuota extends Record<string, unknown> {
 interface Hermano {
     id: number
     nombre: string
-    apellidos: string
+    primer_apellido: string
+    segundo_apellido?: string
     numero_hermano: string
 }
 
 export function Component() {
     const navigate = useNavigate()
+    const toast = useToastContext()
     const [cuotas, setCuotas] = useState<Cuota[]>([])
     const [hermanos, setHermanos] = useState<Hermano[]>([])
     const [loading, setLoading] = useState(true)
@@ -36,6 +39,7 @@ export function Component() {
         new Date().getFullYear().toString()
     )
     const [filtroPagado, setFiltroPagado] = useState<string>('todos')
+    const [searchTerm, setSearchTerm] = useState('')
 
     useEffect(() => {
         loadData()
@@ -84,68 +88,159 @@ export function Component() {
     const getHermanoNombre = (hermanoId: number) => {
         const hermano = hermanos.find((h) => h.id === hermanoId)
         return hermano
-            ? `${hermano.numero_hermano} - ${hermano.nombre} ${hermano.apellidos}`
+            ? `${hermano.nombre} ${hermano.primer_apellido} ${hermano.segundo_apellido || ''}`
             : 'Desconocido'
     }
 
+    const getHermanoNumero = (hermanoId: number) => {
+        const hermano = hermanos.find((h) => h.id === hermanoId)
+        return hermano?.numero_hermano || '-'
+    }
+
     const cuotasFiltradas = cuotas.filter((c) => {
+        const hermanoNombre = getHermanoNombre(c.hermano_id).toLowerCase()
+        const hermanoNumero = getHermanoNumero(c.hermano_id)
+
         const matchAnio =
             filtroAnio === 'todos' || c.anio.toString() === filtroAnio
         const matchPagado =
             filtroPagado === 'todos' ||
             (filtroPagado === 'pagado' && c.pagado) ||
             (filtroPagado === 'pendiente' && !c.pagado)
-        return matchAnio && matchPagado
+        const matchSearch =
+            searchTerm === '' ||
+            hermanoNombre.includes(searchTerm.toLowerCase()) ||
+            hermanoNumero.includes(searchTerm)
+
+        return matchAnio && matchPagado && matchSearch
     })
 
     const aniosDisponibles = Array.from(
         new Set(cuotas.map((c) => c.anio))
     ).sort((a, b) => b - a)
 
+    const formatCurrency = (amount: number) => {
+        return new Intl.NumberFormat('es-ES', {
+            style: 'currency',
+            currency: 'EUR'
+        }).format(amount)
+    }
+
+    const totalCuotas = cuotasFiltradas.length
+    const cuotasPagadas = cuotasFiltradas.filter((c) => c.pagado).length
+    const cuotasPendientes = totalCuotas - cuotasPagadas
+    const totalImporte = cuotasFiltradas.reduce((sum, c) => sum + c.importe, 0)
+    const totalPagado = cuotasFiltradas
+        .filter((c) => c.pagado)
+        .reduce((sum, c) => sum + c.importe, 0)
+    const totalPendiente = totalImporte - totalPagado
+
     const columns: TableColumn<Cuota>[] = [
         {
             key: 'hermano_id',
             label: 'Hermano',
-            render: (v) => getHermanoNombre(v as number)
+            render: (_v, cuota) => {
+                const hermanoNombre = getHermanoNombre(cuota.hermano_id)
+                const hermanoNumero = getHermanoNumero(cuota.hermano_id)
+                return (
+                    <div className="flex items-center">
+                        <div className="shrink-0 h-8 w-8">
+                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <User className="h-4 w-4 text-gray-500" />
+                            </div>
+                        </div>
+                        <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                                {hermanoNombre}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                                Nº {hermanoNumero}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
         },
-        { key: 'anio', label: 'Año' },
+        {
+            key: 'anio',
+            label: 'Año',
+            render: (value) => (
+                <div className="text-sm font-medium text-gray-900">
+                    {String(value)}
+                </div>
+            )
+        },
+        {
+            key: 'trimestre',
+            label: 'Trimestre',
+            render: (value) => (
+                <div className="text-sm text-gray-900">{value}º Trim.</div>
+            )
+        },
         {
             key: 'importe',
             label: 'Importe',
-            render: (v) => `${(v as number).toFixed(2)} €`
+            render: (value) => (
+                <span className="text-sm font-medium text-gray-900">
+                    {formatCurrency(value as number)}
+                </span>
+            )
         },
         {
             key: 'pagado',
             label: 'Estado',
-            render: (v, row) => (
-                <div className="flex items-center gap-2">
-                    <span
-                        className={`px-2 py-1 text-xs rounded-full ${v ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                    >
-                        {v ? 'Pagado' : 'Pendiente'}
-                    </span>
-                    <Button
-                        onClick={() => handleMarcarPagada(row)}
-                        className="text-xs py-1 px-2"
-                    >
-                        {v ? 'Marcar pendiente' : 'Marcar pagado'}
-                    </Button>
-                </div>
+            render: (_value, cuota) => (
+                <span
+                    className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        cuota.pagado
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                    }`}
+                >
+                    {cuota.pagado ? 'Pagado' : 'Pendiente'}
+                </span>
             )
         },
         {
             key: 'fecha_pago',
             label: 'Fecha Pago',
-            render: (v) =>
-                v ? new Date(v as string).toLocaleDateString('es-ES') : '-'
+            render: (value) => (
+                <span className="text-sm text-gray-500">
+                    {value
+                        ? new Date(value as string).toLocaleDateString('es-ES')
+                        : '-'}
+                </span>
+            )
+        },
+        {
+            key: 'metodo_pago',
+            label: 'Método',
+            render: (value) => (
+                <span className="text-sm text-gray-500">
+                    {(value as string) || '-'}
+                </span>
+            )
         }
     ]
 
+    if (loading) {
+        return (
+            <Card title="Gestión de Cuotas" subtitle="Cargando...">
+                <div className="flex items-center justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-2 text-gray-600">
+                        Cargando cuotas...
+                    </span>
+                </div>
+            </Card>
+        )
+    }
+
     return (
-        <div>
+        <div className="space-y-6">
             <Card
                 title="Gestión de Cuotas"
-                subtitle="Lista de todas las cuotas registradas"
+                subtitle="Vista general de todas las cuotas"
                 action={
                     <Button onClick={() => navigate('/cuotas/nueva')}>
                         <Plus className="h-4 w-4 mr-2" />
@@ -153,7 +248,80 @@ export function Component() {
                     </Button>
                 }
             >
-                <div className="mb-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Estadísticas */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-blue-600 font-medium">
+                                    Total Cuotas
+                                </p>
+                                <p className="text-2xl font-bold text-blue-900">
+                                    {totalCuotas}
+                                </p>
+                            </div>
+                            <Euro className="h-8 w-8 text-blue-400" />
+                        </div>
+                    </div>
+
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-green-600 font-medium">
+                                    Pagadas
+                                </p>
+                                <p className="text-2xl font-bold text-green-900">
+                                    {cuotasPagadas}
+                                </p>
+                                <p className="text-xs text-green-600">
+                                    {formatCurrency(totalPagado)}
+                                </p>
+                            </div>
+                            <Check className="h-8 w-8 text-green-400" />
+                        </div>
+                    </div>
+
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-red-600 font-medium">
+                                    Pendientes
+                                </p>
+                                <p className="text-2xl font-bold text-red-900">
+                                    {cuotasPendientes}
+                                </p>
+                                <p className="text-xs text-red-600">
+                                    {formatCurrency(totalPendiente)}
+                                </p>
+                            </div>
+                            <X className="h-8 w-8 text-red-400" />
+                        </div>
+                    </div>
+
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <p className="text-sm text-purple-600 font-medium">
+                                    Total Importe
+                                </p>
+                                <p className="text-2xl font-bold text-purple-900">
+                                    {formatCurrency(totalImporte)}
+                                </p>
+                            </div>
+                            <AlertCircle className="h-8 w-8 text-purple-400" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filtros */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Input
+                        label="Buscar hermano"
+                        type="text"
+                        placeholder="Nombre o número..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                     <Select
                         label="Filtrar por año"
                         value={filtroAnio}
@@ -177,14 +345,15 @@ export function Component() {
                         ]}
                     />
                 </div>
+            </Card>
 
+            <Card title="Lista de Cuotas">
                 <Table
                     data={cuotasFiltradas}
                     columns={columns}
                     onEdit={(c) => navigate(`/cuotas/${c.id}/editar`)}
                     onDelete={handleDelete}
-                    loading={loading}
-                    emptyMessage="No hay cuotas registradas"
+                    emptyMessage="No hay cuotas que coincidan con los filtros"
                 />
             </Card>
         </div>

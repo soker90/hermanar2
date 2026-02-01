@@ -124,6 +124,28 @@ pub fn search_hermanos(db: &DbConnection, query: &str) -> Result<Vec<Hermano>, a
     Ok(hermanos)
 }
 
+pub fn get_hermanos_by_familia(db: &DbConnection, familia_id: i32) -> Result<Vec<Hermano>, anyhow::Error> {
+    let conn = db.lock().map_err(|_| anyhow::anyhow!("Error de base de datos"))?;
+    let mut stmt = conn.prepare(
+        "SELECT id, numero_hermano, nombre, primer_apellido, segundo_apellido, dni, 
+                fecha_nacimiento, localidad_nacimiento, provincia_nacimiento, fecha_alta, 
+                familia_id, telefono, email, direccion, localidad, provincia, codigo_postal,
+                parroquia_bautismo, localidad_bautismo, provincia_bautismo,
+                autorizacion_menores, nombre_representante_legal, dni_representante_legal,
+                hermano_aval_1, hermano_aval_2, activo, observaciones, created_at, updated_at
+         FROM hermanos
+         WHERE familia_id = ?1
+         ORDER BY numero_hermano"
+    )?;
+
+    let hermanos = stmt.query_map([familia_id], |row| {
+        Hermano::from_row(row)
+    })?
+    .collect::<Result<Vec<_>, _>>()?;
+
+    Ok(hermanos)
+}
+
 pub fn create_hermano(db: &DbConnection, hermano: &Hermano) -> Result<i32, anyhow::Error> {
     let conn = db.lock().map_err(|_| anyhow::anyhow!("Error de base de datos"))?;
 
@@ -287,24 +309,13 @@ pub fn set_hermano_inactive(db: &DbConnection, id: i32) -> Result<(), anyhow::Er
     Ok(())
 }
 
-pub fn get_hermanos_by_familia(db: &DbConnection, familia_id: i32) -> Result<Vec<Hermano>, anyhow::Error> {
+pub fn update_hermano_familia(db: &DbConnection, hermano_id: i32, familia_id: Option<i32>) -> Result<(), anyhow::Error> {
     let conn = db.lock().map_err(|_| anyhow::anyhow!("Error de base de datos"))?;
-    let mut stmt = conn.prepare(
-        "SELECT id, numero_hermano, nombre, primer_apellido, segundo_apellido, dni, 
-                fecha_nacimiento, localidad_nacimiento, provincia_nacimiento, fecha_alta, 
-                familia_id, telefono, email, direccion, localidad, provincia, codigo_postal,
-                parroquia_bautismo, localidad_bautismo, provincia_bautismo,
-                autorizacion_menores, nombre_representante_legal, dni_representante_legal,
-                hermano_aval_1, hermano_aval_2, activo, observaciones, created_at, updated_at
-         FROM hermanos
-         WHERE familia_id = ?1
-         ORDER BY primer_apellido, segundo_apellido, nombre"
+
+    conn.execute(
+        "UPDATE hermanos SET familia_id = ?1, updated_at = CURRENT_TIMESTAMP WHERE id = ?2",
+        params![familia_id, hermano_id]
     )?;
 
-    let hermanos = stmt.query_map([familia_id], |row| {
-        Hermano::from_row(row)
-    })?
-    .collect::<Result<Vec<_>, _>>()?;
-
-    Ok(hermanos)
+    Ok(())
 }

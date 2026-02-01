@@ -1,5 +1,5 @@
 import { Outlet } from 'react-router'
-import { Users, Building2, Euro, Home, Menu, X, Settings } from 'lucide-react'
+import { Users, Building2, Euro, Home, Menu, X } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router'
 
@@ -27,15 +27,9 @@ export function Component() {
             description: 'Gestión de familias'
         },
         {
-            name: 'Cuotas',
-            path: '/cuotas',
-            icon: Euro,
-            description: 'Listado de cuotas'
-        },
-        {
             name: 'Gestión Cuotas',
             path: '/cuotas/gestion',
-            icon: Settings,
+            icon: Euro,
             description: 'Generar y gestionar'
         }
     ]

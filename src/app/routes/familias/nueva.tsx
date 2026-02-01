@@ -5,6 +5,7 @@ import { Select } from '@/components/ui/select'
 import { useNavigate } from 'react-router'
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { useToastContext } from '@/contexts/toast-context'
 
 interface Hermano {
     id?: number
@@ -16,6 +17,7 @@ interface Hermano {
 
 export function Component() {
     const navigate = useNavigate()
+    const toast = useToastContext()
     const [loading, setLoading] = useState(false)
     const [hermanos, setHermanos] = useState<Hermano[]>([])
     const [formData, setFormData] = useState({
@@ -43,10 +45,9 @@ export function Component() {
         setLoading(true)
 
         try {
-            // Preparar datos para enviar, convirtiendo undefined correctamente
             const dataToSend = {
                 nombre_familia: formData.nombre_familia,
-                hermano_direccion_id: formData.hermano_direccion_id || undefined
+                hermano_direccion_id: formData.hermano_direccion_id || null
             }
 
             await invoke('create_familia_cmd', { familia: dataToSend })
@@ -92,13 +93,13 @@ export function Component() {
                         })
                     }
                     options={[
-                        { value: '', label: 'Seleccionar hermano (opcional)' },
+                        { value: '', label: 'No configurada' },
                         ...hermanos.map((h) => ({
                             value: h.id!.toString(),
                             label: `${h.nombre} ${h.apellidos}${h.direccion ? ` - ${h.direccion}` : ''}`
                         }))
                     ]}
-                    helperText="El hermano seleccionado proporcionará la dirección principal de la familia"
+                    helperText="Selecciona el hermano cuya dirección será la principal de la familia"
                 />
 
                 <div className="flex gap-4 justify-end">

@@ -15,22 +15,56 @@ interface Familia extends Record<string, unknown> {
     updated_at?: string
 }
 
+interface Hermano {
+    id: number
+    nombre: string
+    primer_apellido: string
+    direccion?: string
+    familia_id?: number
+}
+
 export function Component() {
     const navigate = useNavigate()
     const toast = useToastContext()
     const [familias, setFamilias] = useState<Familia[]>([])
+    const [hermanos, setHermanos] = useState<Map<number, Hermano>>(new Map())
+    const [todosHermanos, setTodosHermanos] = useState<Hermano[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
-        loadFamilias()
+        loadData()
     }, [])
 
-    const loadFamilias = async () => {
+    const loadData = async () => {
         try {
-            const data = await invoke<Familia[]>('get_all_familias_cmd')
+            const [data, hermanosData] = await Promise.all([
+                invoke<Familia[]>('get_all_familias_cmd'),
+                invoke<Hermano[]>('get_all_hermanos_cmd')
+            ])
             setFamilias(data)
+            setTodosHermanos(hermanosData)
+
+            // Cargar información de hermanos con dirección
+            const hermanoMap = new Map<number, Hermano>()
+            for (const familia of data) {
+                if (familia.hermano_direccion_id) {
+                    try {
+                        const hermano = await invoke<Hermano>(
+                            'get_hermano_cmd',
+                            {
+                                id: familia.hermano_direccion_id
+                            }
+                        )
+                        hermanoMap.set(familia.hermano_direccion_id, hermano)
+                    } catch (err) {
+                        console.error('Error loading hermano:', err)
+                    }
+                }
+            }
+            setHermanos(hermanoMap)
         } catch (error) {
             console.error('Error loading familias:', error)
+            toast.error('Error al cargar las familias')
         } finally {
             setLoading(false)
         }
@@ -42,7 +76,8 @@ export function Component() {
 
         try {
             await invoke('delete_familia_cmd', { id: familia.id })
-            loadFamilias()
+            loadData()
+            toast.success('Familia eliminada correctamente')
         } catch (error) {
             console.error('Error deleting familia:', error)
             toast.error(
@@ -51,12 +86,42 @@ export function Component() {
         }
     }
 
+    const contarHermanosDeFamilia = (familiaId: number) => {
+        return todosHermanos.filter((h) => h.familia_id === familiaId).length
+    }
+
     const columns: TableColumn<Familia>[] = [
         { key: 'nombre_familia', label: 'Nombre de Familia' },
         {
+            key: 'id',
+            label: 'Nº Hermanos',
+            render: (_v, familia) => {
+                const numHermanos = contarHermanosDeFamilia(familia.id)
+                return (
+                    <span
+                        className={`px-2 py-1 rounded text-xs font-medium ${
+                            numHermanos > 0
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'bg-gray-100 text-gray-800'
+                        }`}
+                    >
+                        {numHermanos}
+                    </span>
+                )
+            }
+        },
+        {
             key: 'hermano_direccion_id',
             label: 'Dirección Principal',
-            render: (v) => (v ? 'Sí' : 'No asignada')
+            render: (_v, familia) => {
+                if (familia.hermano_direccion_id) {
+                    const hermano = hermanos.get(familia.hermano_direccion_id)
+                    if (hermano) {
+                        return hermano.direccion || 'No especificada'
+                    }
+                }
+                return 'No configurada'
+            }
         }
     ]
 

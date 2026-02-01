@@ -1,5 +1,6 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Table, type TableColumn } from '@/components/ui/table'
 import {
     User,
     Phone,
@@ -10,21 +11,36 @@ import {
     ArrowLeft,
     Edit,
     Church,
-    Shield
+    Shield,
+    Euro
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useParams, useNavigate } from 'react-router'
 import type { Hermano } from '@/types'
 
+interface Cuota extends Record<string, unknown> {
+    id: number
+    hermano_id: number
+    anio: number
+    trimestre: number
+    importe: number
+    pagado: boolean
+    fecha_pago?: string
+    metodo_pago?: string
+    observaciones?: string
+}
+
 export function Component() {
     const { id } = useParams()
     const navigate = useNavigate()
     const [hermano, setHermano] = useState<Hermano | null>(null)
+    const [cuotas, setCuotas] = useState<Cuota[]>([])
     const [loading, setLoading] = useState(true)
 
     useEffect(() => {
         loadHermano()
+        loadCuotas()
     }, [id])
 
     const loadHermano = async () => {
@@ -39,6 +55,22 @@ export function Component() {
             console.error('Error al cargar hermano:', error)
         } finally {
             setLoading(false)
+        }
+    }
+
+    const loadCuotas = async () => {
+        if (!id) return
+
+        try {
+            const cuotasData = await invoke<Cuota[]>(
+                'get_cuotas_by_hermano_cmd',
+                {
+                    hermanoId: parseInt(id)
+                }
+            )
+            setCuotas(cuotasData)
+        } catch (error) {
+            console.error('Error al cargar cuotas:', error)
         }
     }
 
@@ -68,6 +100,49 @@ export function Component() {
             </div>
         )
     }
+
+    const cuotasColumns: TableColumn<Cuota>[] = [
+        {
+            key: 'anio',
+            label: 'Año',
+            render: (value) => String(value)
+        },
+        {
+            key: 'trimestre',
+            label: 'Trimestre',
+            render: (value) => `${value}º Trimestre`
+        },
+        {
+            key: 'importe',
+            label: 'Importe',
+            render: (value) => `${Number(value).toFixed(2)} €`
+        },
+        {
+            key: 'pagado',
+            label: 'Estado',
+            render: (_value, cuota) => (
+                <span
+                    className={`px-2 py-1 rounded text-xs ${
+                        cuota.pagado
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                    }`}
+                >
+                    {cuota.pagado ? 'Pagado' : 'Pendiente'}
+                </span>
+            )
+        },
+        {
+            key: 'fecha_pago',
+            label: 'Fecha de Pago',
+            render: (value) => (value ? formatDate(value as string) : '-')
+        },
+        {
+            key: 'metodo_pago',
+            label: 'Método de Pago',
+            render: (value) => (value as string) || '-'
+        }
+    ]
 
     return (
         <div>
@@ -432,6 +507,29 @@ export function Component() {
                     </Card>
                 )}
             </div>
+
+            {/* Histórico de Cuotas */}
+            <Card className="mt-6">
+                <div className="px-6 py-4 border-b border-gray-200">
+                    <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                        <Euro className="h-5 w-5 mr-2 text-indigo-600" />
+                        Histórico de Cuotas
+                    </h2>
+                </div>
+                <div className="p-6">
+                    {cuotas.length > 0 ? (
+                        <Table
+                            data={cuotas}
+                            columns={cuotasColumns}
+                            emptyMessage="No hay cuotas registradas para este hermano"
+                        />
+                    ) : (
+                        <p className="text-center py-8 text-gray-500">
+                            No hay cuotas registradas para este hermano
+                        </p>
+                    )}
+                </div>
+            </Card>
         </div>
     )
 }

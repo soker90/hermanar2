@@ -2,6 +2,7 @@ use crate::db::{
     Hermano, Familia, Cuota, EstadisticasCuotas, DbConnection,
     get_all_hermanos, get_hermanos_activos, get_hermano_by_id, search_hermanos,
     create_hermano, update_hermano, delete_hermano, set_hermano_inactive, get_hermanos_by_familia,
+    update_hermano_familia,
     get_all_familias, get_familia_by_id, search_familias, create_familia,
     update_familia, delete_familia, get_familia_stats, get_familia_with_hermanos, get_familia_with_address,
     get_all_cuotas, get_cuotas_by_hermano, get_cuotas_by_year, get_cuotas_pendientes,
@@ -54,30 +55,20 @@ pub fn search_hermanos_cmd(db: State<DbConnection>, query: String) -> Result<Vec
 
 #[tauri::command]
 pub fn create_hermano_cmd(db: State<DbConnection>, hermano: Hermano) -> Result<i32, String> {
-    match create_hermano(&db, &hermano) {
-        Ok(id) => {
-            println!("✅ Hermano creado con ID: {}", id);
-            Ok(id)
-        },
-        Err(e) => {
-            println!("❌ Error al crear hermano: {}", e);
-            Err(format!("Error al crear hermano: {}", e))
-        }
-    }
+    create_hermano(&db, &hermano)
+        .map_err(|e| format!("Error al crear hermano: {}", e))
 }
 
 #[tauri::command]
 pub fn update_hermano_cmd(db: State<DbConnection>, id: i32, hermano: Hermano) -> Result<(), String> {
-    match update_hermano(&db, id, &hermano) {
-        Ok(_) => {
-            println!("✅ Hermano actualizado correctamente (ID: {})", id);
-            Ok(())
-        },
-        Err(e) => {
-            println!("❌ Error al actualizar hermano {}: {}", id, e);
-            Err(format!("Error al actualizar hermano: {}", e))
-        }
-    }
+    update_hermano(&db, id, &hermano)
+        .map_err(|e| format!("Error al actualizar hermano: {}", e))
+}
+
+#[tauri::command]
+pub fn update_hermano_familia_cmd(db: State<DbConnection>, hermano_id: i32, familia_id: Option<i32>) -> Result<(), String> {
+    update_hermano_familia(&db, hermano_id, familia_id)
+        .map_err(|e| format!("Error al actualizar familia del hermano: {}", e))
 }
 
 #[tauri::command]

@@ -11,6 +11,7 @@ pub mod cuotas;
 pub use hermanos::{
     get_all_hermanos, get_hermanos_activos, get_hermano_by_id, search_hermanos,
     create_hermano, update_hermano, delete_hermano, set_hermano_inactive, get_hermanos_by_familia,
+    update_hermano_familia,
 };
 pub use familias::{
     get_all_familias, get_familia_by_id, search_familias, create_familia,
@@ -58,12 +59,26 @@ pub struct Hermano {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Familia {
     pub id: Option<i32>,
     pub nombre_familia: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub hermano_direccion_id: Option<i32>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
+}
+
+impl Default for Familia {
+    fn default() -> Self {
+        Self {
+            id: None,
+            nombre_familia: String::new(),
+            hermano_direccion_id: None,
+            created_at: None,
+            updated_at: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -95,15 +110,24 @@ pub type DbConnection = Arc<Mutex<Connection>>;
 pub fn init_database() -> Result<DbConnection, anyhow::Error> {
     println!("Iniciando conexión a la base de datos...");
 
-    let conn = Connection::open("hermanar.db")
+    // Usar el directorio de datos de la aplicación
+    let app_data_dir = std::env::var("APPDATA")
+        .or_else(|_| std::env::var("HOME").map(|home| format!("{}/.local/share", home)))
+        .unwrap_or_else(|_| ".".to_string());
+    
+    let db_dir = format!("{}/hermanar", app_data_dir);
+    std::fs::create_dir_all(&db_dir)
+        .context("No se pudo crear el directorio de datos")?;
+    
+    let db_path = format!("{}/hermanar.db", db_dir);
+    println!("Ruta de la base de datos: {}", db_path);
+
+    let conn = Connection::open(&db_path)
         .context("No se pudo crear/abrir la base de datos")?;
 
     println!("Conexión establecida, creando tablas...");
 
     create_tables(&conn)?;
-    
-    println!("Verificando migraciones necesarias...");
-    migrate_database(&conn)?;
 
     println!("Base de datos inicializada correctamente.");
 
@@ -201,112 +225,6 @@ fn create_tables(conn: &Connection) -> Result<(), anyhow::Error> {
         "CREATE INDEX IF NOT EXISTS idx_cuotas_pagado ON cuotas(pagado)",
         [],
     )?;
-
-    Ok(())
-}
-
-fn migrate_database(conn: &Connection) -> Result<(), anyhow::Error> {
-    // Verificar si la tabla hermanos tiene la estructura antigua (columna "apellidos")
-    let mut stmt = conn.prepare("PRAGMA table_info(hermanos)")?;
-    let columns: Vec<String> = stmt
-        .query_map([], |row| row.get::<_, String>(1))?
-        .filter_map(Result::ok)
-        .collect();
-
-    // Si existe la columna "apellidos", necesitamos migrar
-    if columns.contains(&"apellidos".to_string()) {
-        println!("Detectada estructura antigua de tabla hermanos. Iniciando migración...");
-
-        // Crear tabla temporal con nueva estructura
-        conn.execute(
-            "CREATE TABLE hermanos_new (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                numero_hermano TEXT NOT NULL UNIQUE,
-                nombre TEXT NOT NULL,
-                primer_apellido TEXT NOT NULL,
-                segundo_apellido TEXT,
-                dni TEXT,
-                fecha_nacimiento TEXT,
-                localidad_nacimiento TEXT,
-                provincia_nacimiento TEXT,
-                fecha_alta TEXT NOT NULL,
-                familia_id INTEGER,
-                telefono TEXT,
-                email TEXT,
-                direccion TEXT,
-                localidad TEXT,
-                provincia TEXT,
-                codigo_postal TEXT,
-                parroquia_bautismo TEXT,
-                localidad_bautismo TEXT,
-                provincia_bautismo TEXT,
-                autorizacion_menores BOOLEAN NOT NULL DEFAULT 0,
-                nombre_representante_legal TEXT,
-                dni_representante_legal TEXT,
-                hermano_aval_1 TEXT,
-                hermano_aval_2 TEXT,
-                activo BOOLEAN NOT NULL DEFAULT 1,
-                observaciones TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (familia_id) REFERENCES familias (id)
-            )",
-            [],
-        )?;
-
-        // Migrar datos existentes - dividir apellidos en primer y segundo apellido
-        conn.execute(
-            "INSERT INTO hermanos_new 
-             (id, numero_hermano, nombre, primer_apellido, segundo_apellido, dni, 
-              fecha_nacimiento, fecha_alta, familia_id, telefono, email, direccion, 
-              activo, observaciones, created_at, updated_at)
-             SELECT 
-                id, 
-                numero_hermano, 
-                nombre,
-                CASE 
-                    WHEN instr(apellidos, ' ') > 0 
-                    THEN substr(apellidos, 1, instr(apellidos, ' ') - 1)
-                    ELSE apellidos
-                END as primer_apellido,
-                CASE 
-                    WHEN instr(apellidos, ' ') > 0 
-                    THEN trim(substr(apellidos, instr(apellidos, ' ') + 1))
-                    ELSE NULL
-                END as segundo_apellido,
-                dni,
-                fecha_nacimiento,
-                fecha_alta,
-                familia_id,
-                telefono,
-                email,
-                direccion,
-                activo,
-                observaciones,
-                created_at,
-                updated_at
-             FROM hermanos",
-            [],
-        )?;
-
-        // Eliminar tabla antigua
-        conn.execute("DROP TABLE hermanos", [])?;
-
-        // Renombrar tabla nueva
-        conn.execute("ALTER TABLE hermanos_new RENAME TO hermanos", [])?;
-
-        // Recrear índices
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_hermanos_activo ON hermanos(activo)",
-            [],
-        )?;
-        conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_hermanos_familia ON hermanos(familia_id)",
-            [],
-        )?;
-
-        println!("Migración completada exitosamente.");
-    }
 
     Ok(())
 }

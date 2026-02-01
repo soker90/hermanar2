@@ -20,7 +20,7 @@ export function Component() {
     const [loading, setLoading] = useState(true)
     const [selectedCuotas, setSelectedCuotas] = useState<Set<number>>(new Set())
     const [metodoPago, setMetodoPago] = useState<
-        'efectivo' | 'transferencia' | 'domiciliacion'
+        'efectivo' | 'transferencia' | 'domiciliacion' | 'bizum'
     >('efectivo')
     const [isProcessing, setIsProcessing] = useState(false)
     const [searchTerm, setSearchTerm] = useState('')
@@ -124,7 +124,9 @@ export function Component() {
                 ? 'Efectivo'
                 : metodoPago === 'transferencia'
                   ? 'Transferencia'
-                  : 'Domiciliación'
+                  : metodoPago === 'bizum'
+                    ? 'Bizum'
+                    : 'Domiciliación'
         const confirmMessage = `¿Confirma el pago de ${selectedCuotas.size} cuotas?\n\nTotal a pagar: €${totalImporte.toFixed(2)}\nMétodo de pago: ${metodoPagoLabel}\n\nEsta acción marcará las cuotas como pagadas.`
 
         if (!window.confirm(confirmMessage)) {
@@ -255,6 +257,7 @@ export function Component() {
                                         | 'efectivo'
                                         | 'transferencia'
                                         | 'domiciliacion'
+                                        | 'bizum'
                                 )
                             }
                             options={[
@@ -266,6 +269,10 @@ export function Component() {
                                 {
                                     value: 'domiciliacion',
                                     label: 'Domiciliación'
+                                },
+                                {
+                                    value: 'bizum',
+                                    label: 'Bizum'
                                 }
                             ]}
                         />

@@ -21,6 +21,7 @@ pub fn run() {
             search_hermanos_cmd,
             create_hermano_cmd,
             update_hermano_cmd,
+            update_hermano_familia_cmd,
             delete_hermano_cmd,
             set_hermano_inactive_cmd,
             get_hermanos_by_familia_cmd,

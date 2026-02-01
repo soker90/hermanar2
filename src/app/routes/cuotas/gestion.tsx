@@ -1,19 +1,51 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CreditCard, Users, Calculator, TrendingUp } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Select } from '@/components/ui/select'
+import { Table, type TableColumn } from '@/components/ui/table'
+import {
+    CreditCard,
+    Users,
+    Calculator,
+    TrendingUp,
+    Plus,
+    Euro,
+    User,
+    Check,
+    X,
+    AlertCircle,
+    History
+} from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { GenerarCuotas } from './generar'
 import { useNavigate } from 'react-router'
 import type { Cuota } from '@/types'
+import { useToastContext } from '@/contexts/toast-context'
 
-type TabType = 'resumen' | 'generar'
+interface Hermano {
+    id: number
+    nombre: string
+    primer_apellido: string
+    segundo_apellido?: string
+    numero_hermano: string
+}
+
+type TabType = 'resumen' | 'generar' | 'historico'
 
 export function Component() {
     const navigate = useNavigate()
+    const toast = useToastContext()
     const [activeTab, setActiveTab] = useState<TabType>('resumen')
     const [cuotas, setCuotas] = useState<Cuota[]>([])
     const [cuotasPendientes, setCuotasPendientes] = useState<Cuota[]>([])
+    const [hermanos, setHermanos] = useState<Hermano[]>([])
+    const [loading, setLoading] = useState(true)
+    const [filtroAnio, setFiltroAnio] = useState<string>(
+        new Date().getFullYear().toString()
+    )
+    const [filtroPagado, setFiltroPagado] = useState<string>('todos')
+    const [searchTerm, setSearchTerm] = useState('')
 
     useEffect(() => {
         loadData()
@@ -21,14 +53,19 @@ export function Component() {
 
     const loadData = async () => {
         try {
-            const [cuotasData, pendientesData] = await Promise.all([
-                invoke<Cuota[]>('get_all_cuotas_cmd'),
-                invoke<Cuota[]>('get_cuotas_pendientes_cmd')
-            ])
+            const [cuotasData, pendientesData, hermanosData] =
+                await Promise.all([
+                    invoke<Cuota[]>('get_all_cuotas_cmd'),
+                    invoke<Cuota[]>('get_cuotas_pendientes_cmd'),
+                    invoke<Hermano[]>('get_all_hermanos_cmd')
+                ])
             setCuotas(cuotasData)
             setCuotasPendientes(pendientesData)
+            setHermanos(hermanosData)
         } catch (error) {
             console.error('Error loading data:', error)
+        } finally {
+            setLoading(false)
         }
     }
 
@@ -66,6 +103,173 @@ export function Component() {
             id: 'generar' as TabType,
             label: 'Generar Cuotas',
             icon: Users
+        },
+        {
+            id: 'historico' as TabType,
+            label: 'Histórico',
+            icon: History
+        }
+    ]
+
+    const handleDelete = async (cuota: Cuota) => {
+        if (!confirm('¿Eliminar esta cuota?')) return
+
+        try {
+            await invoke('delete_cuota_cmd', { id: cuota.id })
+            loadData()
+        } catch (error) {
+            console.error('Error deleting cuota:', error)
+            toast.error('Error al eliminar la cuota')
+        }
+    }
+
+    const handleMarcarPagada = async (cuota: Cuota) => {
+        try {
+            await invoke('marcar_cuota_pagada_cmd', {
+                id: cuota.id,
+                pagado: !cuota.pagado
+            })
+            loadData()
+        } catch (error) {
+            console.error('Error updating cuota:', error)
+            toast.error('Error al actualizar el estado de la cuota')
+        }
+    }
+
+    const getHermanoNombre = (hermanoId: number) => {
+        const hermano = hermanos.find((h) => h.id === hermanoId)
+        return hermano
+            ? `${hermano.nombre} ${hermano.primer_apellido} ${hermano.segundo_apellido || ''}`
+            : 'Desconocido'
+    }
+
+    const getHermanoNumero = (hermanoId: number) => {
+        const hermano = hermanos.find((h) => h.id === hermanoId)
+        return hermano?.numero_hermano || '-'
+    }
+
+    const cuotasFiltradas = cuotas.filter((c) => {
+        const hermanoNombre = getHermanoNombre(c.hermano_id).toLowerCase()
+        const hermanoNumero = getHermanoNumero(c.hermano_id)
+
+        const matchAnio =
+            filtroAnio === 'todos' || c.anio.toString() === filtroAnio
+        const matchPagado =
+            filtroPagado === 'todos' ||
+            (filtroPagado === 'pagado' && c.pagado) ||
+            (filtroPagado === 'pendiente' && !c.pagado)
+        const matchSearch =
+            searchTerm === '' ||
+            hermanoNombre.includes(searchTerm.toLowerCase()) ||
+            hermanoNumero.includes(searchTerm)
+
+        return matchAnio && matchPagado && matchSearch
+    })
+
+    const aniosDisponibles = Array.from(
+        new Set(cuotas.map((c) => c.anio))
+    ).sort((a, b) => b - a)
+
+    const totalCuotasHistorico = cuotasFiltradas.length
+    const cuotasPagadasHistorico = cuotasFiltradas.filter(
+        (c) => c.pagado
+    ).length
+    const cuotasPendientesHistorico =
+        totalCuotasHistorico - cuotasPagadasHistorico
+    const totalImporteHistorico = cuotasFiltradas.reduce(
+        (sum, c) => sum + c.importe,
+        0
+    )
+    const totalPagadoHistorico = cuotasFiltradas
+        .filter((c) => c.pagado)
+        .reduce((sum, c) => sum + c.importe, 0)
+    const totalPendienteHistorico = totalImporteHistorico - totalPagadoHistorico
+
+    const columnsHistorico: TableColumn<Cuota>[] = [
+        {
+            key: 'hermano_id',
+            label: 'Hermano',
+            render: (_v, cuota) => {
+                const hermanoNombre = getHermanoNombre(cuota.hermano_id)
+                const hermanoNumero = getHermanoNumero(cuota.hermano_id)
+                return (
+                    <div className="flex items-center">
+                        <div className="shrink-0 h-8 w-8">
+                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
+                                <User className="h-4 w-4 text-gray-500" />
+                            </div>
+                        </div>
+                        <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">
+                                {hermanoNombre}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                                Nº {hermanoNumero}
+                            </div>
+                        </div>
+                    </div>
+                )
+            }
+        },
+        {
+            key: 'anio',
+            label: 'Año',
+            render: (value) => (
+                <div className="text-sm font-medium text-gray-900">
+                    {String(value)}
+                </div>
+            )
+        },
+        {
+            key: 'trimestre',
+            label: 'Trimestre',
+            render: (value) => (
+                <div className="text-sm text-gray-900">{value}º Trim.</div>
+            )
+        },
+        {
+            key: 'importe',
+            label: 'Importe',
+            render: (value) => (
+                <span className="text-sm font-medium text-gray-900">
+                    {formatCurrency(value as number)}
+                </span>
+            )
+        },
+        {
+            key: 'pagado',
+            label: 'Estado',
+            render: (_value, cuota) => (
+                <span
+                    className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        cuota.pagado
+                            ? 'bg-green-100 text-green-800'
+                            : 'bg-red-100 text-red-800'
+                    }`}
+                >
+                    {cuota.pagado ? 'Pagado' : 'Pendiente'}
+                </span>
+            )
+        },
+        {
+            key: 'fecha_pago',
+            label: 'Fecha Pago',
+            render: (value) => (
+                <span className="text-sm text-gray-500">
+                    {value
+                        ? new Date(value as string).toLocaleDateString('es-ES')
+                        : '-'}
+                </span>
+            )
+        },
+        {
+            key: 'metodo_pago',
+            label: 'Método',
+            render: (value) => (
+                <span className="text-sm text-gray-500">
+                    {(value as string) || '-'}
+                </span>
+            )
         }
     ]
 
@@ -74,6 +278,171 @@ export function Component() {
             case 'generar':
                 return (
                     <GenerarCuotas onCuotasGenerated={handleCuotasGenerated} />
+                )
+            case 'historico':
+                if (loading) {
+                    return (
+                        <Card
+                            title="Histórico de Cuotas"
+                            subtitle="Cargando..."
+                        >
+                            <div className="flex items-center justify-center py-8">
+                                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                                <span className="ml-2 text-gray-600">
+                                    Cargando cuotas...
+                                </span>
+                            </div>
+                        </Card>
+                    )
+                }
+                return (
+                    <div className="space-y-6">
+                        <Card
+                            title="Histórico de Cuotas"
+                            subtitle="Vista general de todas las cuotas"
+                            action={
+                                <Button
+                                    onClick={() => navigate('/cuotas/nueva')}
+                                >
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Nueva Cuota
+                                </Button>
+                            }
+                        >
+                            {/* Estadísticas */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-blue-600 font-medium">
+                                                Total Cuotas
+                                            </p>
+                                            <p className="text-2xl font-bold text-blue-900">
+                                                {totalCuotasHistorico}
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                            <Calculator className="w-6 h-6 text-blue-600" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-green-600 font-medium">
+                                                Pagadas
+                                            </p>
+                                            <p className="text-2xl font-bold text-green-900">
+                                                {cuotasPagadasHistorico}
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
+                                            <Check className="w-6 h-6 text-green-600" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-red-600 font-medium">
+                                                Pendientes
+                                            </p>
+                                            <p className="text-2xl font-bold text-red-900">
+                                                {cuotasPendientesHistorico}
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
+                                            <X className="w-6 h-6 text-red-600" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <p className="text-sm text-purple-600 font-medium">
+                                                Total Importe
+                                            </p>
+                                            <p className="text-2xl font-bold text-purple-900">
+                                                {formatCurrency(
+                                                    totalImporteHistorico
+                                                )}
+                                            </p>
+                                        </div>
+                                        <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                                            <Euro className="w-6 h-6 text-purple-600" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Filtros */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                                <div>
+                                    <Input
+                                        label="Buscar hermano"
+                                        type="text"
+                                        placeholder="Nombre o número..."
+                                        value={searchTerm}
+                                        onChange={(e) =>
+                                            setSearchTerm(e.target.value)
+                                        }
+                                    />
+                                </div>
+                                <div>
+                                    <Select
+                                        label="Filtrar por año"
+                                        value={filtroAnio}
+                                        onChange={(e) =>
+                                            setFiltroAnio(e.target.value)
+                                        }
+                                        options={[
+                                            {
+                                                value: 'todos',
+                                                label: 'Todos los años'
+                                            },
+                                            ...aniosDisponibles.map((a) => ({
+                                                value: a.toString(),
+                                                label: a.toString()
+                                            }))
+                                        ]}
+                                    />
+                                </div>
+                                <div>
+                                    <Select
+                                        label="Filtrar por estado"
+                                        value={filtroPagado}
+                                        onChange={(e) =>
+                                            setFiltroPagado(e.target.value)
+                                        }
+                                        options={[
+                                            { value: 'todos', label: 'Todos' },
+                                            {
+                                                value: 'pagado',
+                                                label: 'Pagadas'
+                                            },
+                                            {
+                                                value: 'pendiente',
+                                                label: 'Pendientes'
+                                            }
+                                        ]}
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Tabla */}
+                            <Table
+                                data={cuotasFiltradas}
+                                columns={columnsHistorico}
+                                onEdit={(cuota) =>
+                                    navigate(`/cuotas/${cuota.id}/editar`)
+                                }
+                                onDelete={handleDelete}
+                            />
+                        </Card>
+                    </div>
                 )
             case 'resumen':
             default:
